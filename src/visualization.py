@@ -1,58 +1,61 @@
-import pandas as pd  # импортируем pandas для загрузки и обработки данных
-import matplotlib.pyplot as plt  # импортируем matplotlib для построения графиков
-import seaborn as sns  # импортируем seaborn для стилизованных визуализаций
+from pathlib import Path
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 try:
-    import missingno as msno  # пытаемся импортировать missingno для визуализации пропущенных значений
+    import missingno as msno
 except ImportError:
-    msno = None  # если missingno не установлен, то проигнорируем матрицу пропусков
-    print("WARNING: missingno is not installed. Missing values plot will be skipped.")  # предупреждение об отсутствии optional-библиотеки
+    msno = None
+    print("WARNING: missingno is not installed. Missing values plot will be skipped.")
 
-df = pd.read_csv("data/processed/airbnb_clean.csv")  # читаем очищенный набор данных Airbnb из CSV
+repo_root = Path(__file__).resolve().parents[1]
+img_dir = repo_root / "img"
+img_dir.mkdir(parents=True, exist_ok=True)
 
-if msno is not None:  # проверяем, можно ли строить график пропусков
-    msno.matrix(df)  # рисуем матрицу пропусков
-    plt.savefig("img/missing_values.png")  # сохраняем результат в файл
-    plt.close()  # закрываем фигуру, освобождаем ресурсы
+df = pd.read_csv(repo_root / "data" / "processed" / "airbnb_clean.csv")
+
+if msno is not None:
+    msno.matrix(df)
+    plt.savefig(img_dir / "missing_values.png")
+    plt.close()
 else:
-    print("Skipping missing values chart because missingno is unavailable.")  # уведомляем, что график пропусков пропущен
+    print("Skipping missing values chart because missingno is unavailable.")
 
-plt.figure(figsize=(10,6))  # создаём фигуру для гистограммы цен
-sns.histplot(df["price"], bins=50)  # строим гистограмму распределения цен
-plt.title("Price Distribution")  # задаём заголовок графика
-plt.savefig("img/price_distribution.png")  # сохраняем гистограмму в папку img
-plt.close()  # закрываем фигуру
+plt.figure(figsize=(10, 6))
+sns.histplot(df["price"], bins=50)
+plt.title("Price Distribution")
+plt.tight_layout()
+plt.savefig(img_dir / "price_distribution.png")
+plt.close()
 
-plt.figure(figsize=(8,5))  # создаём фигуру для столбчатой диаграммы по районам
+plt.figure(figsize=(8, 5))
+df.groupby("neighbourhood_group")["price"].mean().sort_values().plot(kind="bar")
+plt.title("Average Price by Borough")
+plt.tight_layout()
+plt.savefig(img_dir / "borough_price.png")
+plt.close()
 
-df.groupby("neighbourhood_group")["price"].mean().sort_values().plot(kind="bar")  # строим бар-чарт средней цены по району
-plt.title("Average Price by Borough")  # заголовок диаграммы
-plt.savefig("img/borough_price.png")  # сохраняем диаграмму
-plt.close()  # закрываем фигуру
+plt.figure(figsize=(8, 5))
+sns.boxplot(data=df, x="room_type", y="price")
+plt.xticks(rotation=20)
+plt.tight_layout()
+plt.savefig(img_dir / "room_type_boxplot.png")
+plt.close()
 
-plt.figure(figsize=(8,5))  # создаём фигуру для boxplot
-sns.boxplot(data=df, x="room_type", y="price")  # строим boxplot цен для каждого типа жилья
-plt.xticks(rotation=20)  # поворачиваем подписи, чтобы они не перекрывались
-plt.savefig("img/room_type_boxplot.png")  # сохраняем boxplot
-plt.close()  # закрываем фигуру
+plt.figure(figsize=(8, 5))
+sns.scatterplot(data=df, x="number_of_reviews", y="price")
+plt.title("Price vs Number of Reviews")
+plt.tight_layout()
+plt.savefig(img_dir / "scatter_reviews_price.png")
+plt.close()
 
-plt.figure(figsize=(8,5))  # создаём фигуру для scatter plot
-sns.scatterplot(
-    data=df,  # передаём DataFrame
-    x="number_of_reviews",  # ось X — количество отзывов
-    y="price"  # ось Y — цена
-)
-plt.savefig("img/scatter_reviews_price.png")  # сохраняем scatter plot
-plt.close()  # закрываем фигуру
+plt.figure(figsize=(10, 8))
+corr = df.select_dtypes(include=["number"]).corr()
+sns.heatmap(corr, annot=True, cmap="coolwarm")
+plt.title("Correlation Matrix")
+plt.tight_layout()
+plt.savefig(img_dir / "correlation_matrix.png")
+plt.close()
 
-plt.figure(figsize=(10,8))  # создаём фигуру для корреляционной матрицы
-corr = df.select_dtypes(include=["int64","float64"]).corr()  # вычисляем корреляционную матрицу для числовых признаков
-sns.heatmap(
-    corr,  # передаём матрицу корреляций
-    annot=True,  # включаем числовые аннотации
-    cmap="coolwarm"  # используем цветовую карту
-)
-plt.savefig("img/correlation_matrix.png")  # сохраняем тепловую карту
-plt.close()  # закрываем фигуру
-
-print("Все графики сохранены в папку img")  # выводим сообщение об успешном сохранении графиков
+print("Все графики сохранены в папку img")

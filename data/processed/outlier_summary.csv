@@ -1,0 +1,6 @@
+metric,value
+iqr_lower_bound,-76.0
+iqr_upper_bound,300.0
+iqr_outlier_count,385.0
+zscore_threshold,3.0
+zscore_outlier_count,182.0

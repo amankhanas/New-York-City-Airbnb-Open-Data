@@ -1,56 +1,101 @@
-import pandas as pd  # импортируем pandas для подготовки данных
-from sklearn.linear_model import LinearRegression  # импортируем линейную регрессию из sklearn
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score  # импортируем метрики для оценки модели
-from sklearn.model_selection import train_test_split  # импортируем функцию разбиения данных на train/test
+from pathlib import Path
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
 
 
 def main():
-    df = pd.read_csv("data/processed/airbnb_clean.csv")  # читаем очищенный набор данных Airbnb
+    repo_root = Path(__file__).resolve().parents[1]
+    data_path = repo_root / "data" / "processed" / "airbnb_clean.csv"
+    output_dir = repo_root / "data" / "processed"
+    img_dir = repo_root / "img"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    img_dir.mkdir(parents=True, exist_ok=True)
 
-    numeric_features = [  # список числовых признаков для модели
+    df = pd.read_csv(data_path)
+
+    numeric_features = [
         "minimum_nights",
         "number_of_reviews",
         "reviews_per_month",
         "availability_365",
         "calculated_host_listings_count",
     ]
-    categorical_features = ["neighbourhood_group", "room_type"]  # категориальные признаки
+    categorical_features = ["neighbourhood_group", "room_type"]
 
-    df = pd.get_dummies(df, columns=categorical_features, drop_first=True)  # кодируем категориальные признаки dummy-переменными
-    feature_columns = numeric_features + [  # формируем список признаков для обучения
-        col for col in df.columns
+    df_model = pd.get_dummies(df, columns=categorical_features, drop_first=True)
+    feature_columns = numeric_features + [
+        col for col in df_model.columns
         if col.startswith("neighbourhood_group_") or col.startswith("room_type_")
     ]
 
-    X = df[feature_columns]  # матрица признаков
-    y = df["price"]  # вектор целевой переменной — цена
+    X = df_model[feature_columns]
+    y = df_model["price"]
 
-    X_train, X_test, y_train, y_test = train_test_split(  # делим выборку на обучающую и тестовую
-        X, y, test_size=0.2, random_state=42  # 20% данных оставляем для теста
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = mse ** 0.5
+    r2 = r2_score(y_test, y_pred)
+
+    metrics = pd.DataFrame(
+        [{"mae": mae, "mse": mse, "rmse": rmse, "r2": r2, "model": "LinearRegression"}]
     )
+    metrics.to_csv(output_dir / "model_metrics.csv", index=False)
 
-    model = LinearRegression()  # создаём объект модели линейной регрессии
-    model.fit(X_train, y_train)  # обучаем модель на тренировочных данных
-    y_pred = model.predict(X_test)  # делаем предсказания на тестовой выборке
+    coefficients = pd.DataFrame(
+        {"feature": feature_columns, "coefficient": model.coef_}
+    ).sort_values(by="coefficient", key=abs, ascending=False)
+    coefficients.to_csv(output_dir / "model_coefficients.csv", index=False)
 
-    mae = mean_absolute_error(y_test, y_pred)  # считаем MAE
-    mse = mean_squared_error(y_test, y_pred)  # считаем MSE
-    rmse = mse ** 0.5  # считаем RMSE
-    r2 = r2_score(y_test, y_pred)  # считаем R2
+    predictions = pd.DataFrame(
+        {
+            "actual_price": y_test.values,
+            "predicted_price": y_pred,
+            "residual": y_test.values - y_pred,
+        }
+    )
+    predictions.to_csv(output_dir / "model_predictions.csv", index=False)
 
-    print("Метрики модели Linear Regression:\n")  # выводим заголовок метрик
-    print(f"MAE: {mae:.2f}")  # выводим MAE
-    print(f"MSE: {mse:.2f}")  # выводим MSE
-    print(f"RMSE: {rmse:.2f}")  # выводим RMSE
-    print(f"R2: {r2:.3f}")  # выводим R2
+    plt.figure(figsize=(8, 6))
+    sns.scatterplot(x=y_test, y=y_pred, alpha=0.4)
+    plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--")
+    plt.xlabel("Actual Price")
+    plt.ylabel("Predicted Price")
+    plt.title("Actual vs Predicted Price")
+    plt.savefig(img_dir / "actual_vs_predicted.png")
+    plt.close()
 
-    coefficients = pd.DataFrame({  # создаём таблицу коэффициентов модели
-        "feature": X.columns,
-        "coefficient": model.coef_
-    }).sort_values(by="coefficient", key=abs, ascending=False)  # сортируем коэффициенты по абсолютной величине
-    coefficients.to_csv("data/processed/model_coefficients.csv", index=False)  # сохраняем коэффициенты в CSV
-    print("Коэффициенты модели сохранены в data/processed/model_coefficients.csv")  # уведомляем об успешном сохранении
+    plt.figure(figsize=(8, 6))
+    sns.scatterplot(x=y_pred, y=predictions["residual"], alpha=0.4)
+    plt.axhline(0, color="red", linestyle="--")
+    plt.xlabel("Predicted Price")
+    plt.ylabel("Residuals")
+    plt.title("Residual Plot")
+    plt.savefig(img_dir / "residual_plot.png")
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    top_features = coefficients.head(10).copy()
+    sns.barplot(data=top_features, x="coefficient", y="feature", orient="h")
+    plt.title("Top Feature Coefficients")
+    plt.tight_layout()
+    plt.savefig(img_dir / "feature_importance.png")
+    plt.close()
+
+    print("Метрики модели Linear Regression:\n")
+    print(metrics.to_string(index=False))
+    print("\nКоэффициенты модели сохранены в data/processed/model_coefficients.csv")
+    print("Графики сохранены в img/")
 
 
 if __name__ == "__main__":
-    main()  # выполняем основную функцию, если скрипт запущен напрямую
+    main()
