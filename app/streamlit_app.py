@@ -68,11 +68,11 @@ def main():
     col4.metric("Среднее количество дней доступно", f"{filtered_df['availability_365'].mean():.0f}")
 
     with st.expander("Описание данных"):
-        st.dataframe(filtered_df.head(), use_container_width=True)
+        st.dataframe(filtered_df.head(), width="stretch")
 
     st.subheader("Ценовое распределение")
     fig_price = px.histogram(filtered_df, x="price", nbins=40, title="Распределение цен Airbnb", labels={"price": "Цена ($)"})
-    st.plotly_chart(fig_price, use_container_width=True)
+    st.plotly_chart(fig_price, width="stretch")
 
     st.subheader("Средняя цена по району")
     borough_price = (
@@ -82,10 +82,10 @@ def main():
         .sort_values(by="price", ascending=False)
     )
     fig_borough = px.bar(borough_price, x="neighbourhood_group", y="price", title="Средняя цена по району", labels={"price": "Средняя цена ($)", "neighbourhood_group": "Район"})
-    st.plotly_chart(fig_borough, use_container_width=True)
+    st.plotly_chart(fig_borough, width="stretch")
 
     st.subheader("Карта объектов")
-    fig_map = px.scatter_mapbox(
+    fig_map = px.scatter_map(
         filtered_df,
         lat="latitude",
         lon="longitude",
@@ -95,9 +95,9 @@ def main():
         hover_data={"price": True, "number_of_reviews": True},
         zoom=9,
         height=450,
-        mapbox_style="open-street-map",
+        map_style="open-street-map",
     )
-    st.plotly_chart(fig_map, use_container_width=True)
+    st.plotly_chart(fig_map, width="stretch")
 
     st.subheader("Связь цены и отзывов")
     fig_scatter = px.scatter(
@@ -109,11 +109,11 @@ def main():
         labels={"number_of_reviews": "Число отзывов", "price": "Цена ($)"},
         opacity=0.7,
     )
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_scatter, width="stretch")
 
     st.subheader("Boxplot цены по типу жилья")
     fig_box = px.box(filtered_df, x="room_type", y="price", title="Boxplot цены по типу жилья")
-    st.plotly_chart(fig_box, use_container_width=True)
+    st.plotly_chart(fig_box, width="stretch")
 
     st.subheader("Корреляционная матрица")
     corr = filtered_df.select_dtypes(include=["number"]).corr()
@@ -129,16 +129,16 @@ def main():
     st.markdown("- Признаки: `minimum_nights`, `number_of_reviews`, `reviews_per_month`, `availability_365`, `calculated_host_listings_count`, `neighbourhood_group`, `room_type`")
 
     st.subheader("Описательная статистика")
-    st.dataframe(stats_df.round(3), use_container_width=True)
+    st.dataframe(stats_df.round(3), width="stretch")
 
     st.subheader("Топ-корреляции с целевой переменной")
-    st.dataframe(price_corr_df.head(10).reset_index().rename(columns={"index": "feature"}), use_container_width=True)
+    st.dataframe(price_corr_df.head(10).reset_index().rename(columns={"index": "feature"}), width="stretch")
 
     st.subheader("Метрики качества модели")
-    st.dataframe(metrics_df.round(4), use_container_width=True)
+    st.dataframe(metrics_df.round(4), width="stretch")
 
     st.subheader("Коэффициенты модели")
-    st.dataframe(coeff_df.head(10), use_container_width=True)
+    st.dataframe(coeff_df.head(10), width="stretch")
 
     col_plot_1, col_plot_2 = st.columns(2)
     with col_plot_1:
